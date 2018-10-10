@@ -1,0 +1,45 @@
+项目中遇到一个流程需要做完整性校验，生成校验码的过程是压缩--》hash--》base64编码，而在校验的过程中及，一开始我是解析出的文件进行同样的操作即压缩--》hash--》base64编码，但是每次压缩完的结果都不一样。
+这里附上压缩的方法实现
+    /**
+     * 使用zip进行压缩
+     * @param str 压缩前的文本
+     * @return 返回压缩后的文本
+     */
+    public static String zip(String str) {
+        if (str == null)
+            return null;
+        byte[] compressed;
+        ByteArrayOutputStream out = null;
+        ZipOutputStream zout = null;
+        String compressedStr = null;
+        try {
+            out = new ByteArrayOutputStream();
+            zout = new ZipOutputStream(out);
+            ZipEntry ze=new ZipEntry("0");
+            //设置LastModifiedTime
+            FileTime fileTime=FileTime.fromMillis(0);
+            ze.setLastModifiedTime(fileTime);
+            zout.putNextEntry(ze);
+            zout.write(str.getBytes());
+            zout.closeEntry();
+            compressed = out.toByteArray();
+            compressedStr = new sun.misc.BASE64Encoder().encodeBuffer(compressed);
+        } catch (IOException e) {
+            compressed = null;
+        } finally {
+            if (zout != null) {
+                try {
+                    zout.close();
+                } catch (IOException e) {
+                }
+            }
+            if (out != null) {
+                try {
+                    out.close();
+                } catch (IOException e) {
+                }
+            }
+        }
+        return compressedStr;
+    }
+    原因是压缩时会将压缩字符串最后的修改时间作为参数之一体现在结果里，这样虽然不影响解压缩的后的内容显示，但是如果进行hash操作，就会产生不一致的结果，设置setLastModifiedTime后，每次的结果都一致。
